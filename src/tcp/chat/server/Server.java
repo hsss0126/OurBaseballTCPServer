@@ -39,7 +39,8 @@ public class Server {
 	
 	public void removeWClients(String nickName) {
 		wClients.remove(nickName);
-		System.out.println("지워지나? 인원수: "+wClients.size());
+		
+		System.out.println("대기실? 인원수: "+wClients.size());
 	}
 	
 	public void addRClients(String roomNo, String nickName, DataOutputStream out) {
@@ -56,8 +57,11 @@ public class Server {
 	
 	public void removeRClients(String roomNo, String nickName) {
 		rClients.get(roomNo).remove(nickName);
+		System.out.println("방? 인원수: "+rClients.get(roomNo).size());
+		sendRMessage(roomNo, nickName);
 		if(rClients.get(roomNo).isEmpty()) {
 			rClients.remove(roomNo);	
+			System.out.println("방? 방 개수: "+rClients.size());
 		}
 	}
 	
@@ -81,6 +85,19 @@ public class Server {
 			key = it.next();
 			try {
 				rClients.get(roomNo).get(key).writeUTF(nickName +" : "+msg);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public void sendRMessage(String roomNo, String nickName) {
+		Iterator<String> it = rClients.get(roomNo).keySet().iterator();
+		String key;
+		while(it.hasNext()) {
+			key = it.next();
+			try {
+				rClients.get(roomNo).get(key).writeUTF(nickName + "님이 퇴장하셨습니다.");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -112,19 +129,29 @@ public class Server {
 					message = in.readUTF();
 					System.out.println(message);
 					msgArray = message.split("/");
-					if(msgArray[0].equals("0")) {
-						sendWMessage(msgArray[1], msgArray[2]);					//닉네임과 메세지 전송
+					if(msgArray[0].equals("close")) {
+						if(msgArray[1].equals("0")) {
+							removeWClients(msgArray[2]);					//대기실 맵에서 제거
+							break;
+						} else {
+							removeRClients(msgArray[1], msgArray[2]);		//방 맵에서 제거
+							break;
+						}
 					} else {
-						sendRMessage(msgArray[0], msgArray[1], msgArray[2]);	//방번호와 닉네임과 메세지 전송
+						if(msgArray[0].equals("0")) {
+							sendWMessage(msgArray[1], msgArray[2]);					//닉네임과 메세지 전송
+						} else {
+							sendRMessage(msgArray[0], msgArray[1], msgArray[2]);	//방번호와 닉네임과 메세지 전송
+						}
 					}
 				}
 			} catch(IOException e) {
 				e.printStackTrace();
+				System.out.println("연결끊기");
 			}
 		}
 	}
 	public static void main(String[] args) throws IOException {
-		Server server = new Server();
-		server.setting();
+		new Server().setting();
 	}
 }
